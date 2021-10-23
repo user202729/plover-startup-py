@@ -13,17 +13,27 @@ class Main:
 		self.engine=engine
 		self.plugin_running=False
 
-		self.load_module()
+		try:
+			self.load_module()
+		except:
+			plover.log.error("while running plover_startup_py:__init__", exc_info=True)
 
 		global instance
 		assert instance is None
 		instance=self
 
 	def load_module(self)->None:
+		"""
+		Function to (re)load the module.
+
+		Might raise an error if the module failed to load.
+		"""
 		if self.plugin_running:
 			self.stop()
-			self.load_module()
-			self.start()
+			try:
+				self.load_module()
+			finally:
+				self.start()
 			return
 
 		spec = importlib.util.spec_from_file_location(
@@ -34,6 +44,11 @@ class Main:
 		spec.loader.exec_module(self.module)  # type: ignore
 
 	def start(self) -> None:
+		"""
+		Function to start the extension plugin. Called by Plover.
+
+		Will never raise an error. Direct error log to plover.log instead.
+		"""
 		assert not self.plugin_running
 		self.plugin_running=True
 		try:
@@ -42,6 +57,11 @@ class Main:
 			plover.log.error("while running plover_startup_py:start", exc_info=True)
 
 	def stop(self) -> None:
+		"""
+		Function to stop the extension plugin. Called by Plover.
+
+		Will never raise an error. Direct error log to plover.log instead.
+		"""
 		try:
 			self.module.stop(self.engine)
 		except:
