@@ -10,7 +10,6 @@ class Main:
 	plugin_running: bool
 
 	def __init__(self, engine: "plover.engine.StenoEngine") -> None:
-		print("**start**")
 		self.engine=engine
 		self.plugin_running=False
 
@@ -19,7 +18,6 @@ class Main:
 		global instance
 		assert instance is None
 		instance=self
-		print("**=", instance)
 
 	def load_module(self)->None:
 		if self.plugin_running:
