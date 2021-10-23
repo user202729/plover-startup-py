@@ -33,3 +33,7 @@ They will be called when the plugin starts/stops (which is normally when Plover 
 ### Usage
 
 Go to "Plugins" tab of Plover configuration, enable the plugin named "plover_startup_py".
+
+To view the full traceback/error messages, you may need to invoke Plover with `--log-level debug`.
+
+There's also an additional command `{plover:plover_startup_py_reload}` for reloading the module.
