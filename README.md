@@ -8,6 +8,23 @@ This plugin should only used for testing purposes. See also:
 * [user202729/plover-debugging-console: A IPython debugging console for Plover.](https://github.com/user202729/plover-debugging-console)
 * [user202729/plover-run-py: Command plugin for Plover to run an arbitrary Python command.](https://github.com/user202729/plover-run-py)
 
+Disadvantages in comparison to writing an extension plugin:
+
+* Can only be used on a single machine.
+
+   However, it should not be hard to convert a configuration file into an extension plugin to be distributed.
+
+Advantages over writing an extension plugin:
+
+* For testing purposes, the user-provided code might have some bug/errors.
+
+   While using a normal extension plugin might make Plover nonfunctional (for example if `stop()` raises
+   an error, Plover quit will be interrupted), this module guarantees that Plover is never interrupted.
+
+* Has a reload command, which is faster than restarting Plover.
+
+* Some convenience functions to make hacks easier to achieve. (will be available later)
+
 ### Installation
 
 The package can be installed from pip or GitHub.
