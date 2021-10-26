@@ -23,7 +23,7 @@ Advantages over writing an extension plugin:
 
 * Has a reload command, which is faster than restarting Plover.
 
-* Some convenience functions to make hacks easier to achieve. (will be available later)
+* Some convenience functions to make hacks easier to achieve.
 
 ### Installation
 
@@ -35,17 +35,22 @@ You need to create a file named `plover_startup_py_config.py` in Plover's config
 (see https://plover.readthedocs.io/en/latest/api/oslayer_config.html#plover.oslayer.config.CONFIG_DIR
 for where it is exactly)
 
-The file must define two functions `start` and `stop`, each receives the engine as the only input parameter:
+The file may define (and register) functions `start` and `stop`, each receives the engine as the only input parameter:
 
 ```python
+@register_start
 def start(engine):
 	pass
 
+@register_stop
 def stop(engine):
 	pass
 ```
 
 They will be called when the plugin starts/stops (which is normally when Plover starts/exits)
+
+There are more convenience functions, search for "convenience functions" in the source code for more details
+(and to read their documentation).
 
 ### Usage
 

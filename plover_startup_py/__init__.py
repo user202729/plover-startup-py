@@ -1,20 +1,23 @@
 import importlib.util
-from typing import Any, Optional
+from typing import Any, Optional, Callable, TypeVar
 from pathlib import Path
 import sys
 
 import plover  # type: ignore
 
+T=TypeVar("T", bound=Callable)
+
 class Main:
-	module: Any
 	plugin_running: bool
+	start_functions: list
+	stop_functions: list
 
 	def __init__(self, engine: "plover.engine.StenoEngine") -> None:
 		self.engine=engine
 		self.plugin_running=False
 
 		try:
-			self.load_module()
+			self.load_file()
 		except:
 			plover.log.error("while running plover_startup_py:__init__", exc_info=True)
 
@@ -22,26 +25,92 @@ class Main:
 		assert instance is None
 		instance=self
 
-	def load_module(self)->None:
-		"""
-		Function to (re)load the module.
 
-		Might raise an error if the module failed to load.
+	# [[convenience functions]] passed to the file.
+	def register_start(self, f: T)->T:
 		"""
+		Register a function to be executed when the plugin starts.
+
+		Can be used as a decorator.
+
+		Functions are executed in register order.
+		"""
+		self.start_functions.append(f)
+		return f
+
+	def register_stop(self, f: T)->T:
+		"""
+		Register a function to be executed when the plugin stops.
+
+		Can be used as a decorator.
+
+		Functions are executed in reverse register order.
+		"""
+		self.stop_functions.append(f)
+		return f
+
+	def patch_function(self, o: Any, prop: str, f: Callable=None)->Any:
+		"""
+		Register a function to be executed when the plugin starts.
+		The convenience functions are passed in as global variables.
+
+		Can be used as a decorator.
+
+		The original function is accessible as <the function function>.
+
+		Parameters:
+			o: the object.
+			prop: the property name.
+			f: the function. If None is passed then the function returns a decorator to apply to the function f.
+
+		Return:
+			The decorator function, or the function verbatim, with additional `_original` method set.
+		"""
+		if f is None:
+			return lambda f: self.patch_function(o, prop, f)
+
+		def do_patch_start(_engine)->None:
+			assert not hasattr(f, "_original")
+			f._original=getattr(o, prop)  # type: ignore
+			setattr(o, prop, f)
+
+		def do_patch_stop(_engine)->None:
+			assert hasattr(getattr(o, prop), "_original")
+			setattr(o, prop, getattr(o, prop)._original)
+
+		self.register_start(do_patch_start)
+		self.register_stop(do_patch_stop)
+		return f
+
+	def load_file(self)->None:
+		"""
+		Function to (re)load the file.
+
+		Might raise an error if the file failed to load.
+
+		In any case, start_functions and stop_functions are set to the correct value/emptied.
+		"""
+
 		if self.plugin_running:
-			self.stop()
 			try:
-				self.load_module()
+				self.stop()
 			finally:
-				self.start()
+				try:
+					self.load_file()
+				finally:
+					self.start()
 			return
 
-		spec = importlib.util.spec_from_file_location(
-				name="plover_startup_py_module",
-				location=Path(plover.oslayer.config.CONFIG_DIR)/"plover_startup_py_config.py")
-		self.module = importlib.util.module_from_spec(spec)
-		assert spec.loader is not None
-		spec.loader.exec_module(self.module)  # type: ignore
+		self.start_functions=[]
+		self.stop_functions=[]
+		exec(
+				(Path(plover.oslayer.config.CONFIG_DIR)/"plover_startup_py_config.py").read_text(),
+				dict(
+					register_start=self.register_start,
+					register_stop=self.register_stop,
+					patch_function=self.patch_function,
+					)
+				)
 
 	def start(self) -> None:
 		"""
@@ -52,9 +121,10 @@ class Main:
 		assert not self.plugin_running
 		self.plugin_running=True
 		try:
-			self.module.start(self.engine)
+			for f in self.start_functions:
+				f(self.engine)
 		except:
-			plover.log.error("while running plover_startup_py:start", exc_info=True)
+			plover.log.error(f"while running plover_startup_py:start - {f}", exc_info=True)
 
 	def stop(self) -> None:
 		"""
@@ -63,9 +133,10 @@ class Main:
 		Will never raise an error. Direct error log to plover.log instead.
 		"""
 		try:
-			self.module.stop(self.engine)
+			for f in reversed(self.stop_functions):
+				f(self.engine)
 		except:
-			plover.log.error("while running plover_startup_py:stop", exc_info=True)
+			plover.log.error(f"while running plover_startup_py:stop - {f}", exc_info=True)
 		assert self.plugin_running
 		self.plugin_running=False
 
@@ -75,4 +146,4 @@ def reload(engine, argument: str)->None:
 	if instance is None:
 		plover.log.error("The extension plugin is not running!")
 		return
-	instance.load_module()
+	instance.load_file()
