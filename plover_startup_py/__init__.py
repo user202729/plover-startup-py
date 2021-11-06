@@ -1,16 +1,16 @@
 import importlib.util
-from typing import Any, Optional, Callable, TypeVar
+from typing import Any, Optional, Callable, TypeVar, List
 from pathlib import Path
 import sys
 
 import plover  # type: ignore
 
-T=TypeVar("T", bound=Callable)
+T=TypeVar("T", bound=Callable[[], None])
 
 class Main:
 	plugin_running: bool
-	start_functions: list
-	stop_functions: list
+	start_functions: List[Callable[[], None]]
+	stop_functions: List[Callable[[], None]]
 
 	def __init__(self, engine: "plover.engine.StenoEngine") -> None:
 		self.engine=engine
@@ -69,12 +69,12 @@ class Main:
 		if f is None:
 			return lambda f: self.patch_function(o, prop, f)
 
-		def do_patch_start(_engine)->None:
+		def do_patch_start()->None:
 			assert not hasattr(f, "_original")
 			f._original=getattr(o, prop)  # type: ignore
 			setattr(o, prop, f)
 
-		def do_patch_stop(_engine)->None:
+		def do_patch_stop()->None:
 			assert hasattr(getattr(o, prop), "_original")
 			setattr(o, prop, getattr(o, prop)._original)
 
@@ -103,12 +103,14 @@ class Main:
 
 		self.start_functions=[]
 		self.stop_functions=[]
+		# NOTE this line is mentioned in the documentation
 		exec(
 				(Path(plover.oslayer.config.CONFIG_DIR)/"plover_startup_py_config.py").read_text(),
 				dict(
 					register_start=self.register_start,
 					register_stop=self.register_stop,
 					patch_function=self.patch_function,
+					engine=self.engine,
 					)
 				)
 
@@ -122,7 +124,7 @@ class Main:
 		self.plugin_running=True
 		try:
 			for f in self.start_functions:
-				f(self.engine)
+				f()
 		except:
 			plover.log.error(f"while running plover_startup_py:start - {f}", exc_info=True)
 
@@ -134,7 +136,7 @@ class Main:
 		"""
 		try:
 			for f in reversed(self.stop_functions):
-				f(self.engine)
+				f()
 		except:
 			plover.log.error(f"while running plover_startup_py:stop - {f}", exc_info=True)
 		assert self.plugin_running

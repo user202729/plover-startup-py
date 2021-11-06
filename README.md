@@ -35,22 +35,26 @@ You need to create a file named `plover_startup_py_config.py` in Plover's config
 (see https://plover.readthedocs.io/en/latest/api/oslayer_config.html#plover.oslayer.config.CONFIG_DIR
 for where it is exactly)
 
-The file may define (and register) functions `start` and `stop`, each receives the engine as the only input parameter:
+The file may define (and register) functions `start` and `stop`:
 
 ```python
 @register_start
-def start(engine):
+def start():
 	pass
 
 @register_stop
-def stop(engine):
+def stop():
 	pass
 ```
 
 They will be called when the plugin starts/stops (which is normally when Plover starts/exits)
 
-There are more convenience functions, search for "convenience functions" in the source code for more details
+The engine can be accessed as the global variable `engine`, and there are more convenience functions,
+search for "convenience functions" in the source code for more details
 (and to read their documentation).
+
+The last line in `load_file()` function in `plover_startup_py/__init__.py` file
+have the complete list of global variables passed to the configuration file.
 
 ### Usage
 
