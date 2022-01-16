@@ -25,6 +25,11 @@ Advantages over writing an extension plugin:
 
 * Some convenience functions to make hacks easier to achieve.
 
+### Note
+
+The code is executed when the extension plugin is started, so it might not be effective to patch some
+commands that run before it (for example, functions to get keyboard devices etc.)
+
 ### Installation
 
 The package can be installed from pip or GitHub.
